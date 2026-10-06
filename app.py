@@ -55,55 +55,67 @@ if uploaded_file is not None:
     # CLEAN REVIEW TEXT
     # ---------------------------------
 
-    df["cleaned_review"] = (
-        df["review_body"]
-        .fillna("")
-        .apply(clean_text)
+    if "review_body" in df.columns:
+    review_column = "review_body"
+
+elif "review_text" in df.columns:
+    review_column = "review_text"
+
+else:
+    st.error(
+        "CSV must contain a 'review_body' or 'review_text' column."
+    )
+    st.stop()
+
+df["cleaned_review"] = (
+    df[review_column]
+    .fillna("")
+    .apply(clean_text)
+)
+
+# ---------------------------------
+# SENTIMENT ANALYSIS
+# ---------------------------------
+
+sentiments, sentiment_scores = analyze_sentiment(
+    df["cleaned_review"].tolist()
+)
+
+df["sentiment"] = sentiments
+df["sentiment_score"] = sentiment_scores
+
+# ---------------------------------
+# TF-IDF
+# ---------------------------------
+
+tfidf_matrix, vectorizer = create_tfidf_matrix(
+    df["cleaned_review"]
+)
+
+# ---------------------------------
+# K-MEANS CLUSTERING
+# ---------------------------------
+
+cluster_labels, kmeans = create_clusters(
+    tfidf_matrix
     )
 
-    # ---------------------------------
-    # SENTIMENT ANALYSIS
-    # ---------------------------------
+df["cluster"] = cluster_labels
 
-    sentiments, sentiment_scores = analyze_sentiment(
-        df["cleaned_review"].tolist()
-    )
+ # ---------------------------------
+ # REPRESENTATIVE REVIEWS
+ # ---------------------------------
 
-    df["sentiment"] = sentiments
-    df["sentiment_score"] = sentiment_scores
+ representative_reviews = get_representative_reviews(
+      tfidf_matrix,
+      cluster_labels,
+      kmeans,
+      df["cleaned_review"]
+      )
 
-    # ---------------------------------
-    # TF-IDF
-    # ---------------------------------
+  cluster_reviews = {}
 
-    tfidf_matrix, vectorizer = create_tfidf_matrix(
-        df["cleaned_review"]
-    )
-
-    # ---------------------------------
-    # K-MEANS CLUSTERING
-    # ---------------------------------
-
-    cluster_labels, kmeans = create_clusters(
-        tfidf_matrix
-    )
-
-    df["cluster"] = cluster_labels
-
-    # ---------------------------------
-    # REPRESENTATIVE REVIEWS
-    # ---------------------------------
-
-    representative_reviews = get_representative_reviews(
-        tfidf_matrix,
-        cluster_labels,
-        kmeans,
-        df["cleaned_review"]
-    )
-
-    cluster_reviews = {}
-
-    for item in representative_reviews:
+   for item in representative_reviews:
 
         cluster_id = item["cluster"]
         review = item["review"]
